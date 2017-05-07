@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="http://cdn.babylonjs.com/2-4/babylon.max.js"></script>
+    <script src="babylon.waterMaterial.js"></script>
+
+    <style>
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    
+    <canvas id="canvas"></canvas>
+
+    <div id="focus">
+        
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', function(){
+        var colisiones=[1,2,3,4,5,6,7,8,10,12,13,14,16,17,18,19,20,21,24,25];
+        var contenedores = [5,6,7,8,10];
+        var contMuelle = [5,6,7,8,10];
+        var barco=0;
+        var grua=11;
+        var pita=22;
+        var brazo=15;
+        var iman=23;
+        var isla=9;
+        var contBarco=[];
+        var indicesBarco=[];
+        //cont de scala
+        var cont=21;
+        var contenedor;
+        var indiceC;
+        var imanLleno=false;
+
+        var canvas = document.getElementById('canvas');
+        var htmlFocus = document.getElementById('focus');
+
+        var elements = [];
+        var engine = new BABYLON.Engine(canvas, true);
+
+        engine.enableOfflineSupport = false; // Dont require a manifest file
+        var createScene = function(){
+            var scene = new BABYLON.Scene(engine);
+            var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
+            // Skybox
+            var skybox = BABYLON.Mesh.CreateBox("skyBox", 5000.0, scene);
+            var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+            skyboxMaterial.backFaceCulling = false;
+            skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("textures/TropicalSunnyDay", scene);
+            skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+            skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+            skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+            skyboxMaterial.disableLighting = true;
+            skybox.material = skyboxMaterial;
+
+            //Creo el agua como un nuevo material que se agrega a la escena
+            var waterMesh = BABYLON.Mesh.CreateGround("waterMesh", 512, 512, 0, scene, false);
+            var water = new BABYLON.WaterMaterial("water", scene, new BABYLON.Vector2(512, 512));
+            waterMesh.position.y=-1;
+            water.backFaceCulling = true;
+            water.bumpTexture = new BABYLON.Texture("textures/waterbump.png", scene);
+            water.windForce = -10;
+            water.waveHeight = .2;
+            water.bumpHeight = 0.1;
+            water.windDirection = new BABYLON.Vector2(1, 1);
+            water.waterColor = new BABYLON.Color3(0, 0, 221 / 255);
+            water.colorBlendFactor = 0.0;
+            water.addToRenderList(skybox);
+            waterMesh.material = water;
+            
+            //Seteo la gravedad a mi escena
+            scene.gravity = new BABYLON.Vector3(0, -9.81, 0);
+
+             //Creo la camara desde donde se vera la escena inical
+            var camera = new BABYLON.ArcRotateCamera(
+                "arcCam",
+                BABYLON.Tools.ToRadians(90),
+                BABYLON.Tools.ToRadians(90),
+                20.0,
+                BABYLON.Vector3.Zero(),
+                scene
+            );
+
+            var camera2 = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 15, -45), scene);
+            
+            var camera3 = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 15, -45), scene);
+            //define the camera controls
+            camera.attachControl(canvas,true);
+            
+            //Creo la luz desde donde le dara la claridad a la escena
+            var light = new BABYLON.PointLight(
+                "PointLight",
+                new BABYLON.Vector3(0,0,0),
+                scene
+            );
+            
+            light.parent = camera;
+            light.intensity = 1.5;
+
+            //cargar el modelo
+            BABYLON.SceneLoader.ImportMesh(
+                "","","crane-and-boat.babylon",
+                scene,
+                function(newMeshes) {
+                    newMeshes.forEach(
+                        function(mesh) {
+                            elements.push(mesh);
+                        }
+                    );
+                }
+            );
+            console.log(elements);
+            scene.registerBeforeRender(function () {
+            });
+            return scene;
+        }
+
+        var scene = createScene();
+        var focus = 1;
+     
+        var onKeyDown = function(evt) {
+          var camera = new BABYLON.ArcRotateCamera("arcCam",BABYLON.Tools.ToRadians(45),BABYLON.Tools.ToRadians(45),30.0,BABYLON.Vector3.Zero(),scene);
+          var camera2 = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 15, -45), scene);
+          var camera3 = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 15, -45), scene);
+
+          var i;
+          for(i=0;i<25;i++){
+              elements[i].checkCollisions=true;     
+          }
+          if(evt.keyCode == 49) {
+            focus = 1;
+            var msg = "<h1>Focus Boat</h1> <a href=\"http://es.tinypic.com?ref=8vqmg1\" target=\"_blank\"><img src=\"http://i63.tinypic.com/8vqmg1.png\" border=\"0\" alt=\"Image and video hosting by TinyPic\"></a>";
+            htmlFocus.innerHTML = msg;
+            console.log(focus);
+          }
+          if(evt.keyCode == 50){
+              focus = 2;
+              var msg = "<h1>Focus Crane</h1>  <a href=\"http://es.tinypic.com?ref=i3idsx\" target=\"_blank\"><img src=\"http://i63.tinypic.com/i3idsx.png\" border=\"0\" alt=\"Image and video hosting by TinyPic\"></a> ";
+              htmlFocus.innerHTML = msg;
+              console.log(focus);
+          }
+          if(evt.keyCode == 51){
+              focus = 3;
+              var msg = "<h1>Focus Crane</h1>  <a href=\"http://es.tinypic.com?ref=i3idsx\" target=\"_blank\"><img src=\"http://i63.tinypic.com/i3idsx.png\" border=\"0\" alt=\"Image and video hosting by TinyPic\"></a> ";
+              htmlFocus.innerHTML = msg;
+              console.log(focus);
+          }
+          if(evt.keyCode == 52){
+              focus = 4;
+              var msg = "<h1>Focus Crane</h1>  <a href=\"http://es.tinypic.com?ref=i3idsx\" target=\"_blank\"><img src=\"http://i63.tinypic.com/i3idsx.png\" border=\"0\" alt=\"Image and video hosting by TinyPic\"></a> ";
+              htmlFocus.innerHTML = msg;
+              console.log(focus);
+          }
+
+          //Cambio de camara
+          if (evt.keyCode == 53) {
+              scene.activeCamera=camera;
+              scene.activeCamera.attachControl(canvas, true);
+          }
+          //Barco
+          if (evt.keyCode == 54) {
+              camera2.lockedTarget = elements[barco];
+              scene.activeCamera=camera2;
+              scene.activeCamera.attachControl(canvas, true);
+                
+          }
+          //Grua
+          if (evt.keyCode == 55) {
+              camera3.lockedTarget = elements[grua]; 
+              scene.activeCamera=camera3;
+              scene.activeCamera.attachControl(canvas, true);
+                
+          }
+
+          //Move boat to right
+         if (evt.keyCode == 65) {
+             
+             elements.forEach(function(e) {
+                 var matrix = BABYLON.Matrix.Translation(0, 0, 0);
+                 e.setPivotMatrix(matrix);
+
+                 if (e.name === "Barco"  && focus === 1) {
+                     e.translate(new BABYLON.Vector3(1, 0, 0), 0.2, BABYLON.Space.LOCAL);
+                     contBarco.forEach(function(entry) {
+                        entry.translate(BABYLON.Axis.X, 0.2, BABYLON.Space.WORLD);
+                    });
+                    if(elements[3].intersectsMesh(elements[isla])|| elements[1].intersectsMesh(elements[22])){
+                	   elements[barco].translate(BABYLON.Axis.X, -0.2, BABYLON.Space.WORLD);
+                       contBarco.forEach(function(entry) {
+                        entry.translate(BABYLON.Axis.X, -0.2, BABYLON.Space.WORLD);
+                        });
+                    }
+                 }
+
+                 if(e.name === "Grua" && focus === 2){
+                     e.translate(new BABYLON.Vector3(1, 0, 0), 0.2, BABYLON.Space.LOCAL);
+                 }               
+                 
+             });
+         }
+
+         //Move the boat to left
+         if (evt.keyCode == 68 ) {
+             elements.forEach(function(e) {
+                 var matrix = BABYLON.Matrix.Translation(0, 0, 0);
+                 e.setPivotMatrix(matrix);
+
+                 if (e.name === "Barco" && focus === 1 ) {
+                     e.translate(new BABYLON.Vector3(-1, 0, 0), 0.2, BABYLON.Space.LOCAL);
+                     contBarco.forEach(function(entry) {
+                        entry.translate(BABYLON.Axis.X, -0.2, BABYLON.Space.WORLD);
+                    });
+                	if(elements[3].intersectsMesh(elements[isla]) || elements[1].intersectsMesh(elements[22])){
+                       elements[barco].translate(BABYLON.Axis.X, 0.2, BABYLON.Space.WORLD);
+                       contBarco.forEach(function(entry) {
+                        entry.translate(BABYLON.Axis.X, 0.2, BABYLON.Space.WORLD);
+                        });
+                    }
+                 }
+
+                 if(e.name === "Grua" && focus === 2){
+                      e.translate(new BABYLON.Vector3(-1, 0, 0), 0.2, BABYLON.Space.LOCAL);
+                 }
+                 
+                 
+             });
+         }
+
+         //Move the boat to front
+         if (evt.keyCode == 81) {
+             elements.forEach(function(e) {
+                 var matrix = BABYLON.Matrix.Translation(0, 0, 0);
+                 e.setPivotMatrix(matrix);
+
+                 if (e.name === "Barco" && focus === 1) {
+                     e.translate(new BABYLON.Vector3(0, 0, 1), 0.2, BABYLON.Space.LOCAL);
+                     contBarco.forEach(function(entry) {
+                        entry.translate(BABYLON.Axis.Z, 0.2, BABYLON.Space.WORLD);
+                    });
+                	if(elements[3].intersectsMesh(elements[isla]) || elements[1].intersectsMesh(elements[22])){
+                       elements[barco].translate(BABYLON.Axis.Z, -0.2, BABYLON.Space.WORLD);
+                       contBarco.forEach(function(entry) {
+                        entry.translate(BABYLON.Axis.Z, -0.2, BABYLON.Space.WORLD);
+                        });
+                    }
+                 }
+             });
+         }
+
+         //Move the boat to back
+         if (evt.keyCode == 69) {
+             elements.forEach(function(e) {
+                 var matrix = BABYLON.Matrix.Translation(0, 0, 0);
+                 e.setPivotMatrix(matrix);
+
+                 if (e.name === "Barco" && focus === 1) {
+                     e.translate(new BABYLON.Vector3(0, 0, -1), 0.2, BABYLON.Space.LOCAL);
+                     contBarco.forEach(function(entry) {
+                        entry.translate(BABYLON.Axis.Z, -0.2, BABYLON.Space.WORLD);
+                    });
+                	if(elements[3].intersectsMesh(elements[isla]) || elements[1].intersectsMesh(elements[22])){
+                       elements[barco].translate(BABYLON.Axis.Z, 0.2, BABYLON.Space.WORLD);
+                       contBarco.forEach(function(entry) {
+                        entry.translate(BABYLON.Axis.Z, 0.2, BABYLON.Space.WORLD);
+                        });
+                    }
+                 }
+
+             });
+         }
+
+         //Rotate boat Y  z
+         if (evt.keyCode == 90 ) {
+             var cont = 1;
+             elements.forEach(function(e) {
+                 var matrix = BABYLON.Matrix.Translation(0, 0, 0);
+                 e.setPivotMatrix(matrix);
+
+                 if (e.name === "Barco" && focus === 1) {
+                     e.rotate(BABYLON.Axis.Y, 0.25, BABYLON.Space.LOCAL);
+                     contBarco.forEach(function(entry) {
+                        entry.position.x=objetos[barco].getAbsolutePosition().x;
+                        entry.position.z=objetos[barco].getAbsolutePosition().z;
+                    });
+                 }
+
+                  //Rotate complete the Crane
+                 if (e.name === "Sphere" && focus === 2) {
+                     e.rotate(BABYLON.Axis.Y, 0.25, BABYLON.Space.LOCAL);
+                     if(imanLleno){      
+                         contenedor.position.x= elements[23].getAbsolutePosition().x;
+                         contenedor.position.z= elements[23].getAbsolutePosition().z;
+                     }
+                     let temp = 0;
+                    for(temp;temp<contenedores.length;temp++){
+                        if(elements[contenedores[temp]].intersectsMesh(elements[23]) && !imanLleno){
+                            imanLleno = true;
+                            contMuelle.pop(contenedores[temp]);
+                            contenedor = elements[contenedores[temp]];
+                            contenedor.position.x=elements[23].getAbsolutePosition().x;
+                            contenedor.position.y=elements[23].getAbsolutePosition().y-0.2;
+                            contenedor.position.z=elements[23].getAbsolutePosition().z;
+                        }
+
+                    }
+
+                    if (imanLleno && contenedor.intersectsMesh(elements[3])){
+                     contBarco.push(contenedor);
+                     contenedor.position.x=elements[23].getAbsolutePosition().x;
+                     contenedor.position.y=elements[3].getAbsolutePosition().y+0.2;
+                     contenedor.position.z=elements[3].getAbsolutePosition().z;
+                     imanLleno = false;
+                    }
+                 }
+
+                 //Rotate only middle part
+                 if (e.name === "Sphere1" && focus === 3) {
+                     e.rotate(BABYLON.Axis.Y, 0.25, BABYLON.Space.LOCAL);
+                     if(imanLleno){      
+                         contenedor.position.x= elements[23].getAbsolutePosition().x;
+                         contenedor.position.z= elements[23].getAbsolutePosition().z;
+                     }
+                     let temp = 0;
+                    for(temp;temp<contenedores.length;temp++){
+                        if(elements[contenedores[temp]].intersectsMesh(elements[23]) && !imanLleno){
+                            imanLleno = true;
+                            contMuelle.pop(contenedores[temp]);
+                            contenedor = elements[contenedores[temp]];
+                            contenedor.position.x=elements[23].getAbsolutePosition().x;
+                            contenedor.position.y=elements[23].getAbsolutePosition().y-0.2;
+                            contenedor.position.z=elements[23].getAbsolutePosition().z;
+                        }
+
+                    }
+
+                    if (imanLleno && contenedor.intersectsMesh(elements[3])){
+                     contBarco.push(contenedor);
+                     contenedor.position.x=elements[23].getAbsolutePosition().x;
+                     contenedor.position.y=elements[3].getAbsolutePosition().y+0.2;
+                     contenedor.position.z=elements[3].getAbsolutePosition().z;
+                     imanLleno = false;
+                    }
+                 }
+
+                 //Rotate only middle part
+                 if (e.name === "Sphere2" && focus === 4) {
+                     e.rotate(BABYLON.Axis.Y, 0.25, BABYLON.Space.LOCAL);
+                     if(imanLleno){      
+                         contenedor.position.x= elements[23].getAbsolutePosition().x;
+                         contenedor.position.z= elements[23].getAbsolutePosition().z;
+                     }
+                     let temp = 0;
+                    for(temp;temp<contenedores.length;temp++){
+                        if(elements[contenedores[temp]].intersectsMesh(elements[23]) && !imanLleno){
+                            imanLleno = true;
+                            contMuelle.pop(contenedores[temp]);
+                            contenedor = elements[contenedores[temp]];
+                            contenedor.position.x=elements[23].getAbsolutePosition().x;
+                            contenedor.position.y=elements[23].getAbsolutePosition().y-0.2;
+                            contenedor.position.z=elements[23].getAbsolutePosition().z;
+                        }
+
+                    }
+
+                    if (imanLleno && contenedor.intersectsMesh(elements[3])){
+                     contBarco.push(contenedor);
+                     contenedor.position.x=elements[23].getAbsolutePosition().x;
+                     contenedor.position.y=elements[3].getAbsolutePosition().y+0.2;
+                     contenedor.position.z=elements[3].getAbsolutePosition().z;
+                     imanLleno = false;
+                    }
+                 }
+                 
+             });
+         }
+
+         //Rotate boat Y x
+         if (evt.keyCode == 88) {
+             var cont = 1;
+             elements.forEach(function(e) {
+                 var matrix = BABYLON.Matrix.Translation(0, 0, 0);
+                 e.setPivotMatrix(matrix);
+
+                 if (e.name === "Barco" && focus === 1) {
+                     e.rotate(BABYLON.Axis.Y, -0.25, BABYLON.Space.LOCAL);
+                     contBarco.forEach(function(entry) {
+                        entry.position.x=objetos[barco].getAbsolutePosition().x;
+                        entry.position.z=objetos[barco].getAbsolutePosition().z;
+                    });
+                 }
+                 //Rotate complete the Crane
+                 if (e.name === "Sphere" && focus === 2) {
+                     e.rotate(BABYLON.Axis.Y, -0.25, BABYLON.Space.LOCAL);
+                     console.log(imanLleno)
+                     if(imanLleno){      
+                         contenedor.position.x= elements[23].getAbsolutePosition().x;
+                         contenedor.position.z= elements[23].getAbsolutePosition().z;
+                         contenedor.position.y= elements[23].getAbsolutePosition().y-0.2;
+                     }
+                     let temp = 0;
+                    for(temp;temp<contenedores.length;temp++){
+                        if(elements[contenedores[temp]].intersectsMesh(elements[23]) && !imanLleno){
+                            imanLleno = true;
+                            contMuelle.pop(contenedores[temp]);
+                            contenedor = elements[contenedores[temp]];
+                            contenedor.position.x=elements[23].getAbsolutePosition().x;
+                            contenedor.position.y=elements[23].getAbsolutePosition().y-0.2;
+                            contenedor.position.z=elements[23].getAbsolutePosition().z;
+                        }
+
+                    }
+                    if (imanLleno && contenedor.intersectsMesh(elements[3])){
+                     contBarco.push(contenedor);
+                     contenedor.position.x=elements[23].getAbsolutePosition().x;
+                     contenedor.position.y=elements[3].getAbsolutePosition().y+0.2;
+                     contenedor.position.z=elements[3].getAbsolutePosition().z;
+                     imanLleno = false;
+                    }
+                 }
+
+                 //Rotate only middle part
+                 if (e.name === "Sphere1" && focus === 3) {
+                     e.rotate(BABYLON.Axis.Y, -0.25, BABYLON.Space.LOCAL);
+                     console.log(imanLleno)
+                     if(imanLleno){      
+                         contenedor.position.x= elements[23].getAbsolutePosition().x;
+                         contenedor.position.z= elements[23].getAbsolutePosition().z;
+                         contenedor.position.y= elements[23].getAbsolutePosition().y-0.2;
+                     }
+                     let temp = 0;
+                    for(temp;temp<contenedores.length;temp++){
+                        if(elements[contenedores[temp]].intersectsMesh(elements[23]) && !imanLleno){
+                            imanLleno = true;
+                            contMuelle.pop(contenedores[temp]);
+                            contenedor = elements[contenedores[temp]];
+                            contenedor.position.x=elements[23].getAbsolutePosition().x;
+                            contenedor.position.y=elements[23].getAbsolutePosition().y-0.2;
+                            contenedor.position.z=elements[23].getAbsolutePosition().z;
+                        }
+
+                    }
+                    if (imanLleno && contenedor.intersectsMesh(elements[3])){
+                     contBarco.push(contenedor);
+                     contenedor.position.x=elements[23].getAbsolutePosition().x;
+                     contenedor.position.y=elements[3].getAbsolutePosition().y+0.2;
+                     contenedor.position.z=elements[3].getAbsolutePosition().z;
+                     imanLleno = false;
+                    }
+                 }
+
+                 //Rotate only middle part
+                 if (e.name === "Sphere2" && focus === 4) {
+                     e.rotate(BABYLON.Axis.Y, -0.25, BABYLON.Space.LOCAL);
+                     console.log(imanLleno)
+                     if(imanLleno){      
+                         contenedor.position.x= elements[23].getAbsolutePosition().x;
+                         contenedor.position.z= elements[23].getAbsolutePosition().z;
+                         contenedor.position.y= elements[23].getAbsolutePosition().y-0.2;
+                     }
+                     let temp = 0;
+                    for(temp;temp<contenedores.length;temp++){
+                        if(elements[contenedores[temp]].intersectsMesh(elements[23]) && !imanLleno){
+                            imanLleno = true;
+                            contMuelle.pop(contenedores[temp]);
+                            contenedor = elements[contenedores[temp]];
+                            contenedor.position.x=elements[23].getAbsolutePosition().x;
+                            contenedor.position.y=elements[23].getAbsolutePosition().y-0.2;
+                            contenedor.position.z=elements[23].getAbsolutePosition().z;
+                        }
+
+                    }
+
+                    if (imanLleno && contenedor.intersectsMesh(elements[3])){
+                     contBarco.push(contenedor);
+                     contenedor.position.x=elements[23].getAbsolutePosition().x;
+                     contenedor.position.y=elements[3].getAbsolutePosition().y+0.2;
+                     contenedor.position.z=elements[3].getAbsolutePosition().z;
+                     imanLleno = false;
+                    }
+
+                 }
+
+                
+                 
+             });
+         }
+
+         //scale up Final Cylinder J
+         if (evt.keyCode == 74) {
+             elements.forEach(function(e) {
+                 console.log(e);
+                 var matrix = BABYLON.Matrix.Translation(0, 0, 0);
+                 e.setPivotMatrix(matrix);
+                 
+
+                 if (e.name === "Cylinder4" ) {
+                     e.scaling.y = e.scaling.y * 1.1;
+                     e.translate(new BABYLON.Vector3(0, -1, 0), 0.05, BABYLON.Space.LOCAL)
+                     if(imanLleno){      
+                         contenedor.position.y=elements[23].getAbsolutePosition().y-0.2;
+                     }
+                 }
+                            
+                 
+             });
+         }
+
+         //scale down Final Cylinder L
+         if (evt.keyCode == 76) {
+             elements.forEach(function(e) {
+                 console.log(e);
+                 var matrix = BABYLON.Matrix.Translation(0, 0, 0);
+                 e.setPivotMatrix(matrix);
+                 if (e.name === "Cylinder4") {
+                     e.scaling.y = e.scaling.y * 0.9;
+                     e.translate(new BABYLON.Vector3(0, 1, 0), 0.05, BABYLON.Space.LOCAL);
+                     if(imanLleno){           
+                         contenedor.position.y=elements[23].getAbsolutePosition().y-0.2;
+                     }
+                 }
+                 
+                 let temp = 0;
+                 for(temp;temp<contenedores.length;temp++){
+                     if(elements[contenedores[temp]].intersectsMesh(elements[23]) && !imanLleno){
+                        imanLleno = true;
+                        contMuelle.pop(contenedores[temp]);
+                        contenedor = elements[contenedores[temp]];
+                        contenedor.position.x=elements[23].getAbsolutePosition().x;
+                        contenedor.position.y=elements[23].getAbsolutePosition().y-0.2;
+                        contenedor.position.z=elements[23].getAbsolutePosition().z;
+                     }
+
+                 }
+
+                 if (imanLleno && contenedor.intersectsMesh(elements[3])){
+                     contBarco.push(contenedor);
+                     contenedor.position.x=elements[23].getAbsolutePosition().x;
+                     contenedor.position.y=elements[3].getAbsolutePosition().y+0.2;
+                     contenedor.position.z=elements[3].getAbsolutePosition().z;
+                     imanLleno = false;
+                 }
+                 
+                 
+             });
+         }
+
+
+         
+
+        
+      
+         console.log(evt.keyCode);
+     };
+
+     var wireFrame = function(elements) {
+            elements.forEach(function(e) {
+                if (e.material != null) {
+                    e.material.wireframe = true;
+                }
+            });
+        };
+
+        var points = function(elements) {
+            elements.forEach(function(e) {
+                if (e.material != null) {
+                    e.material.pointsCloud = true;
+                    e.material.pointSize = 5;
+                }
+            });
+        };
+
+        var render = function(elements) {
+            elements.forEach(function(e) {
+                if (e.material != null) {
+                    e.material.pointsCloud = false;
+                    e.material.wireframe = false;
+                }
+            });
+        };
+
+     // On key up, reset the movement
+     var onKeyUp = function(evt) {};
+     // Register events with the right Babylon function
+     BABYLON.Tools.RegisterTopRootEvents([{
+         name: "keydown",
+         handler: onKeyDown
+     }, {
+         name: "keyup",
+         handler: onKeyUp
+     }]);
+     engine.runRenderLoop(function() {
+         // setear colisiones de meshes
+         if(elements[0]!=null){
+             // movimiento bote
+            //var vector = new BABYLON.Vector3(-1, 0, 0);
+            //Traslacion2(elements[mesh[0]], vector);
+         //elements[0].checkCollisions = true;
+         elements[1].checkCollisions = true;
+         elements[2].checkCollisions = true;
+         elements[3].checkCollisions = true;
+         elements[4].checkCollisions = true;  
+         elements[5].checkCollisions = true;
+         elements[6].checkCollisions = true;
+         elements[7].checkCollisions = true;
+         elements[8].checkCollisions = true;
+         elements[9].checkCollisions = true;  
+         elements[10].checkCollisions = true;
+         elements[11].checkCollisions = true;
+         elements[12].checkCollisions = true;
+         elements[13].checkCollisions = true;
+         elements[14].checkCollisions = true;
+         elements[15].checkCollisions = true;
+         elements[16].checkCollisions = true;
+         elements[17].checkCollisions = true;
+         elements[18].checkCollisions = true;
+         }
+         scene.render();
+     });
+ });
+</script>
+</html>

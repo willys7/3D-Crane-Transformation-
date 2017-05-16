@@ -1,33 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-    <script src="http://cdn.babylonjs.com/2-4/babylon.max.js"></script>
-    <script src="babylon.waterMaterial.js"></script>
-
-    <style>
-        #canvas {
-            width: 100%;
-            height: 100%;
-        }
-    </style>
-</head>
-<body>
-    
-    <canvas id="canvas"></canvas>
-
-    <div id="focus">
-        
-    </div>
-
-    <script>
-            window.addEventListener('DOMContentLoaded', function(){
+        window.addEventListener('DOMContentLoaded', function(){
             var engine = new BABYLON.Engine(canvas, true);
             engine.enableOfflineSupport = false; // Dont require a manifest file
             var elements = [];
 
-            
+            var option = "";
             var scene = new BABYLON.Scene(engine);
             var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
                 // Skybox
@@ -99,7 +75,7 @@
             scaleSmallFactor = 0.9
             open = true;
             shift = true;
-            var option = elements[13];
+            option = elements[13];
             selectedBox = null;
             realSelectedBox = null;
             boatBoxes = []
@@ -318,13 +294,13 @@
                         if(selectedBox != null && realSelectedBox == null){
                             realSelectedBox = selectedBox;
                             if(realSelectedBox.parent != boatFloor){
-                                realSelectedBox.position.x = 0;
-                                realSelectedBox.position.y = 0;
-                                realSelectedBox.position.z = 0;
+                                realSelectedBox.position.x = claw.getAbsolutePosition().x;
+                                realSelectedBox.position.y = claw.getAbsolutePosition().y - 0.8;
+                                realSelectedBox.position.z = claw.getAbsolutePosition().z - 2;
                             }else{
-                                realSelectedBox.position.x = 0;
-                                realSelectedBox.position.y = 0;
-                                realSelectedBox.position.z = 0;
+                                realSelectedBox.position.x = claw.getAbsolutePosition().x +1;
+                                realSelectedBox.position.y = claw.getAbsolutePosition().y - 0.9;
+                                realSelectedBox.position.z = claw.getAbsolutePosition().z ;
                             }
                             realSelectedBox.parent = claw;
                             
@@ -408,5 +384,3 @@
             });
         });
     
-    </script>
-</html>
